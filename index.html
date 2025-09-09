@@ -3,142 +3,149 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Formulaire Intelligent + Admin Sécurisé</title>
+<title>Quiz Multiplayer avec Noms</title>
 <style>
-  body { font-family: Arial, sans-serif; background: #0d0d0d; color: white; margin:0; padding:0; display:flex; flex-direction:column; align-items:center; }
-  header { background:#111; width:100%; padding:15px; text-align:center; font-size:1.5rem; }
-  section { background:#1c1c1c; padding:20px; margin:20px; border-radius:12px; width:90%; max-width:700px; box-shadow:0 0 15px rgba(0,0,0,0.5); }
-  input, textarea { width:100%; padding:10px; margin:5px 0; border-radius:6px; border:none; }
-  button { padding:10px 20px; background:#4cafef; border:none; border-radius:8px; cursor:pointer; margin-top:10px; }
-  table { width:100%; border-collapse: collapse; margin-top:10px; color:white; }
-  th, td { border:1px solid white; padding:8px; text-align:left; }
-  tr:nth-child(even) { background: rgba(255,255,255,0.05); }
-  .hidden { display:none; }
-  #notify { background: #4caf50; padding:10px; margin:10px 0; border-radius:6px; display:none; }
-  #searchInput { margin-bottom:10px; padding:8px; width:100%; border-radius:6px; border:none; }
-  #adminButton { position:fixed; bottom:10px; right:10px; background:#ff5722; padding:10px 15px; border:none; border-radius:50%; cursor:pointer; }
+body { font-family: Arial; background:#222; color:#fff; text-align:center; padding:20px; }
+h1 { color:#f0a500; }
+.container { max-width:900px; margin:auto; background: rgba(0,0,0,0.7); padding:20px; border-radius:10px; }
+input, button { padding:10px; margin:10px 0; border-radius:5px; border:none; font-size:16px; }
+button { background:#4267B2; color:white; cursor:pointer; transition:0.3s background; }
+button:hover { background:#365899; }
+.playerAnswer { margin:10px 0; }
+#questionArea { margin-top:20px; }
+#result { margin-top:10px; font-weight:bold; white-space:pre-line; }
+#scoreBoard { margin-top:20px; text-align:left; }
 </style>
 </head>
 <body>
-<header>Formulaire Intelligent + Admin Sécurisé</header>
 
-<section id="formSection">
-  <h2>Bienvenue !</h2>
-  <p>Entrez vos informations :</p>
-  <input type="text" id="firstName" placeholder="Prénom" required>
-  <input type="text" id="lastName" placeholder="Nom" required>
-  <button onclick="startQuestions()">Commencer</button>
-</section>
+<div class="container">
+    <h1>200 QUESTION POUR PASSER LA JOURNÉE</h1>
 
-<section id="questionsSection" class="hidden">
-  <h2>Répondez aux questions :</h2>
-  <div id="questionsContainer"></div>
-  <button onclick="submitAnswers()">Envoyer</button>
-</section>
+    <div id="playerSetup">
+        <input type="number" id="numPlayers" placeholder="Nombre de joueurs (1 à 4)" min="1" max="4">
+        <button onclick="askNames()">Suivant</button>
+    </div>
 
-<section id="adminSection" class="hidden">
-  <h2>Admin - Voir toutes les réponses</h2>
-  <div id="notify">Nouvelle réponse reçue !</div>
-  <input type="text" id="searchInput" placeholder="Rechercher par nom..." class="hidden" oninput="filterTable()">
-  <table id="adminTable" class="hidden">
-    <thead>
-      <tr><th>Prénom</th><th>Nom</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Action</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</section>
+    <div id="nameSetup" style="display:none;">
+        <div id="nameInputs"></div>
+        <button onclick="startQuiz()">Commencer le Quiz</button>
+    </div>
 
-<button id="adminButton" onclick="accessAdmin()">🔒</button>
+    <div id="quiz" style="display:none;">
+        <div id="questionArea">
+            <h2 id="questionText"></h2>
+            <div id="answersContainer"></div>
+            <button onclick="submitAnswers()">Valider les réponses</button>
+            <div id="result"></div>
+        </div>
+        <div id="scoreBoard"></div>
+    </div>
+</div>
 
 <script>
-  const ADMIN_PASSWORD = "1234";
-  const responses = [];
-  const questions = [
-    "Etes vous en couple ou celib ?",
-    "Quelle est le nom de vortre partenaire ?",
-    "Où vous voyez-vous dans 5 ans ?",
-    "Quel est votre plus grand défi actuel ?"
-  ];
+// Génération de 200 questions exemple
+const questions = [];
+for(let i=1; i<=200; i++){
+    if(i % 5 === 1) questions.push({q:`Capitale de la France ? (Question ${i})`, a:"Paris"});
+    else if(i % 5 === 2) questions.push({q:`Combien font ${i} + ${i}?`, a: `${i+i}`});
+    else if(i % 5 === 3) questions.push({q:`Langue officielle du Brésil ? (Question ${i})`, a:"Portugais"});
+    else if(i % 5 === 4) questions.push({q:`Montagne la plus haute du monde ? (Question ${i})`, a:"Everest"});
+    else questions.push({q:`Pays avec la plus grande superficie ? (Question ${i})`, a:"Russie"});
+}
 
-  function startQuestions() {
-    const firstName = document.getElementById('firstName').value.trim();
-    const lastName = document.getElementById('lastName').value.trim();
-    if (!firstName || !lastName) { alert("Veuillez entrer nom et prénom"); return; }
+let currentQuestion = 0;
+let numPlayers = 1;
+let scores = [];
+let playerNames = [];
 
-    document.getElementById('formSection').classList.add('hidden');
-    const container = document.getElementById('questionsContainer');
-    container.innerHTML = '';
-    questions.forEach((q, i) => {
-      const p = document.createElement('p');
-      p.innerText = `${i+1}. ${q}`;
-      const textarea = document.createElement('textarea');
-      textarea.id = `q${i+1}`;
-      textarea.rows = 2;
-      container.appendChild(p);
-      container.appendChild(textarea);
-    });
-    document.getElementById('questionsSection').classList.remove('hidden');
-  }
+function askNames() {
+    numPlayers = parseInt(document.getElementById('numPlayers').value);
+    if(numPlayers < 1 || numPlayers > 4) return alert("Nombre de joueurs entre 1 et 4 !");
 
-  function submitAnswers() {
-    const firstName = document.getElementById('firstName').value.trim();
-    const lastName = document.getElementById('lastName').value.trim();
-    const answers = [];
-    for(let i=1;i<=questions.length;i++){
-      const ans = document.getElementById(`q${i}`).value.trim();
-      if(!ans){ alert("Veuillez répondre à toutes les questions"); return; }
-      answers.push(ans);
+    const nameInputs = document.getElementById('nameInputs');
+    nameInputs.innerHTML = "";
+    for(let i=0;i<numPlayers;i++){
+        nameInputs.innerHTML += `<input type="text" id="name${i}" placeholder="Nom du joueur ${i+1}"><br>`;
     }
-    const response = {firstName,lastName,...answers.reduce((obj,val,i)=>{obj[`q${i+1}`]=val; return obj;}, {})};
-    responses.push(response);
-    alert("Merci ! Vos réponses ont été enregistrées.");
-    document.getElementById('questionsSection').classList.add('hidden');
-    document.getElementById('formSection').classList.remove('hidden');
-    notifyAdmin();
-    questions.forEach((_,i)=>document.getElementById(`q${i+1}`).value='');
-  }
 
-  function notifyAdmin(){
-    const notify = document.getElementById('notify');
-    notify.style.display='block';
-    setTimeout(()=>{notify.style.display='none';},3000);
-  }
+    document.getElementById('playerSetup').style.display = "none";
+    document.getElementById('nameSetup').style.display = "block";
+}
 
-  function accessAdmin(){
-    const pass = prompt("Entrez le mot de passe admin :");
-    if(pass === ADMIN_PASSWORD){
-      document.getElementById('adminSection').classList.remove('hidden');
-      showAdminTable();
+function startQuiz() {
+    playerNames = [];
+    for(let i=0;i<numPlayers;i++){
+        const name = document.getElementById(`name${i}`).value.trim();
+        if(name==="") { alert("Veuillez entrer tous les noms !"); return; }
+        playerNames.push(name);
+    }
+
+    scores = Array(numPlayers).fill(0);
+    document.getElementById('nameSetup').style.display = "none";
+    document.getElementById('quiz').style.display = "block";
+
+    showQuestion();
+}
+
+function showQuestion() {
+    const q = questions[currentQuestion].q;
+    document.getElementById('questionText').innerText = `Question ${currentQuestion+1} : ${q}`;
+    const container = document.getElementById('answersContainer');
+    container.innerHTML = "";
+
+    for(let i=0;i<numPlayers;i++){
+        const div = document.createElement("div");
+        div.className = "playerAnswer";
+        div.innerHTML = `<label>${playerNames[i]} :</label>
+                         <input type="text" id="answer${i}" placeholder="Réponse...">`;
+        container.appendChild(div);
+    }
+
+    document.getElementById('result').innerText = "";
+}
+
+function submitAnswers() {
+    const correct = questions[currentQuestion].a.toLowerCase();
+    let resultText = "";
+
+    for(let i=0;i<numPlayers;i++){
+        const answer = document.getElementById(`answer${i}`).value.trim().toLowerCase();
+        if(answer === correct){
+            resultText += `${playerNames[i]} : ✅ Bonne réponse ! La réponse est ${questions[currentQuestion].a}\n`;
+            scores[i]++;
+        } else {
+            resultText += `${playerNames[i]} : ❌ Mauvaise réponse ! La bonne réponse est ${questions[currentQuestion].a}\n`;
+        }
+    }
+
+    document.getElementById('result').innerText = resultText;
+    updateScoreBoard();
+
+    currentQuestion++;
+    if(currentQuestion >= questions.length){
+        setTimeout(showFinalScores, 3000);
     } else {
-      alert("Mot de passe incorrect");
+        setTimeout(showQuestion, 3000);
     }
-  }
+}
 
-  function showAdminTable(){
-    const table = document.getElementById('adminTable');
-    const tbody = table.querySelector('tbody');
-    tbody.innerHTML='';
-    responses.forEach((r,i)=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML=`<td>${r.firstName}</td><td>${r.lastName}</td><td>${r.q1}</td><td>${r.q2}</td><td>${r.q3}</td><td>${r.q4}</td><td><button onclick='deleteResponse(${i})'>Supprimer</button></td>`;
-      tbody.appendChild(tr);
-    });
-    table.classList.remove('hidden');
-    document.getElementById('searchInput').classList.remove('hidden');
-  }
+function updateScoreBoard() {
+    let sb = "<h3>Scores :</h3>";
+    for(let i=0;i<numPlayers;i++){
+        sb += `${playerNames[i]} : ${scores[i]}<br>`;
+    }
+    document.getElementById('scoreBoard').innerHTML = sb;
+}
 
-  function deleteResponse(index){
-    responses.splice(index,1);
-    showAdminTable();
-  }
-
-  function filterTable(){
-    const filter = document.getElementById('searchInput').value.toLowerCase();
-    const tbody = document.querySelector('#adminTable tbody');
-    Array.from(tbody.rows).forEach(row=>{
-      row.style.display = row.cells[0].innerText.toLowerCase().includes(filter) || row.cells[1].innerText.toLowerCase().includes(filter) ? '' : 'none';
-    });
-  }
+function showFinalScores() {
+    let sb = "<h2>Quiz terminé !</h2><h3>Scores finaux :</h3>";
+    for(let i=0;i<numPlayers;i++){
+        sb += `${playerNames[i]} : ${scores[i]}<br>`;
+    }
+    document.getElementById('quiz').innerHTML = sb;
+}
 </script>
+
 </body>
 </html>
