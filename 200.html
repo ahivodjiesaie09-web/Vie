@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Multiplayer avec Noms</title>
+<style>
+body { font-family: Arial; background:#222; color:#fff; text-align:center; padding:20px; }
+h1 { color:#f0a500; }
+.container { max-width:900px; margin:auto; background: rgba(0,0,0,0.7); padding:20px; border-radius:10px; }
+input, button { padding:10px; margin:10px 0; border-radius:5px; border:none; font-size:16px; }
+button { background:#4267B2; color:white; cursor:pointer; transition:0.3s background; }
+button:hover { background:#365899; }
+.playerAnswer { margin:10px 0; }
+#questionArea { margin-top:20px; }
+#result { margin-top:10px; font-weight:bold; white-space:pre-line; }
+#scoreBoard { margin-top:20px; text-align:left; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>200 QUESTION POUR PASSER LA JOURNÉE</h1>
+
+    <div id="playerSetup">
+        <input type="number" id="numPlayers" placeholder="Nombre de joueurs (1 à 4)" min="1" max="4">
+        <button onclick="askNames()">Suivant</button>
+    </div>
+
+    <div id="nameSetup" style="display:none;">
+        <div id="nameInputs"></div>
+        <button onclick="startQuiz()">Commencer le Quiz</button>
+    </div>
+
+    <div id="quiz" style="display:none;">
+        <div id="questionArea">
+            <h2 id="questionText"></h2>
+            <div id="answersContainer"></div>
+            <button onclick="submitAnswers()">Valider les réponses</button>
+            <div id="result"></div>
+        </div>
+        <div id="scoreBoard"></div>
+    </div>
+</div>
+
+<script>
+// Génération de 200 questions exemple
+const questions = [];
+for(let i=1; i<=200; i++){
+    if(i % 5 === 1) questions.push({q:`Capitale de la France ? (Question ${i})`, a:"Paris"});
+    else if(i % 5 === 2) questions.push({q:`Combien font ${i} + ${i}?`, a: `${i+i}`});
+    else if(i % 5 === 3) questions.push({q:`Langue officielle du Brésil ? (Question ${i})`, a:"Portugais"});
+    else if(i % 5 === 4) questions.push({q:`Montagne la plus haute du monde ? (Question ${i})`, a:"Everest"});
+    else questions.push({q:`Pays avec la plus grande superficie ? (Question ${i})`, a:"Russie"});
+}
+
+let currentQuestion = 0;
+let numPlayers = 1;
+let scores = [];
+let playerNames = [];
+
+function askNames() {
+    numPlayers = parseInt(document.getElementById('numPlayers').value);
+    if(numPlayers < 1 || numPlayers > 4) return alert("Nombre de joueurs entre 1 et 4 !");
+
+    const nameInputs = document.getElementById('nameInputs');
+    nameInputs.innerHTML = "";
+    for(let i=0;i<numPlayers;i++){
+        nameInputs.innerHTML += `<input type="text" id="name${i}" placeholder="Nom du joueur ${i+1}"><br>`;
+    }
+
+    document.getElementById('playerSetup').style.display = "none";
+    document.getElementById('nameSetup').style.display = "block";
+}
+
+function startQuiz() {
+    playerNames = [];
+    for(let i=0;i<numPlayers;i++){
+        const name = document.getElementById(`name${i}`).value.trim();
+        if(name==="") { alert("Veuillez entrer tous les noms !"); return; }
+        playerNames.push(name);
+    }
+
+    scores = Array(numPlayers).fill(0);
+    document.getElementById('nameSetup').style.display = "none";
+    document.getElementById('quiz').style.display = "block";
+
+    showQuestion();
+}
+
+function showQuestion() {
+    const q = questions[currentQuestion].q;
+    document.getElementById('questionText').innerText = `Question ${currentQuestion+1} : ${q}`;
+    const container = document.getElementById('answersContainer');
+    container.innerHTML = "";
+
+    for(let i=0;i<numPlayers;i++){
+        const div = document.createElement("div");
+        div.className = "playerAnswer";
+        div.innerHTML = `<label>${playerNames[i]} :</label>
+                         <input type="text" id="answer${i}" placeholder="Réponse...">`;
+        container.appendChild(div);
+    }
+
+    document.getElementById('result').innerText = "";
+}
+
+function submitAnswers() {
+    const correct = questions[currentQuestion].a.toLowerCase();
+    let resultText = "";
+
+    for(let i=0;i<numPlayers;i++){
+        const answer = document.getElementById(`answer${i}`).value.trim().toLowerCase();
+        if(answer === correct){
+            resultText += `${playerNames[i]} : ✅ Bonne réponse ! La réponse est ${questions[currentQuestion].a}\n`;
+            scores[i]++;
+        } else {
+            resultText += `${playerNames[i]} : ❌ Mauvaise réponse ! La bonne réponse est ${questions[currentQuestion].a}\n`;
+        }
+    }
+
+    document.getElementById('result').innerText = resultText;
+    updateScoreBoard();
+
+    currentQuestion++;
+    if(currentQuestion >= questions.length){
+        setTimeout(showFinalScores, 3000);
+    } else {
+        setTimeout(showQuestion, 3000);
+    }
+}
+
+function updateScoreBoard() {
+    let sb = "<h3>Scores :</h3>";
+    for(let i=0;i<numPlayers;i++){
+        sb += `${playerNames[i]} : ${scores[i]}<br>`;
+    }
+    document.getElementById('scoreBoard').innerHTML = sb;
+}
+
+function showFinalScores() {
+    let sb = "<h2>Quiz terminé !</h2><h3>Scores finaux :</h3>";
+    for(let i=0;i<numPlayers;i++){
+        sb += `${playerNames[i]} : ${scores[i]}<br>`;
+    }
+    document.getElementById('quiz').innerHTML = sb;
+}
+</script>
+
+</body>
+</html>
